@@ -10,6 +10,10 @@ func main() {
 	
 	videoURL := "https://www.facebook.com/reel/8176615212451714"
 
+	downloadVideo(videoURL)
+}
+
+func downloadVideo(videoURL string){
 	cmd := exec.Command("./yt-dlp", "-o", "H:\\قرآن\\%(title)s.%(ext)s", videoURL)
 
 	// Set the output to the terminal for progress and errors
