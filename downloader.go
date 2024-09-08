@@ -6,20 +6,30 @@ import (
 	"os/exec"
 	"slices"
 	"strings"
+	"sync"
 )
 
 func main() {
-
-	//videoURL := "https://www.facebook.com/reel/8176615212451714"
-
-	//downloadVideo(videoURL)
 	urls, err := extractUrls("urls.txt")
 
 	if err != nil {
 		fmt.Println("couldn't extract urls from the file")
 		return
 	}
-	fmt.Println(urls)
+	
+	wg := sync.WaitGroup{}
+	wg.Add(len(urls))
+
+	// start downloading videos concurrently
+	for i := 0; i < len(urls); i++{
+		go func() {
+			downloadVideo(urls[i])
+			wg.Done()
+		}()
+	}
+
+	// ensure all goroutines complete
+	wg.Wait()
 }
 
 // extract urls from a text file into a slice of strings
