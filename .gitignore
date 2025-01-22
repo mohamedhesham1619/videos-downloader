@@ -1,2 +1,3 @@
-ffmpeg.exe
+*.exe
+*.mkv
 urls.txt

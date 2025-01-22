@@ -51,7 +51,7 @@ func extractUrls(fileName string) ([]string, error){
 }
 
 func downloadVideo(videoURL string) {
-	cmd := exec.Command("./yt-dlp", "-o", "H:\\قرآن\\%(title)s.%(ext)s", videoURL)
+	cmd := exec.Command("./yt-dlp", "-o", "%(title)s.%(ext)s", videoURL)
 
 	// Set the output to the terminal for progress and errors
 	cmd.Stdout = os.Stdout
