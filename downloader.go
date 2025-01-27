@@ -11,12 +11,15 @@ import (
 )
 
 // if the user provides a path flag, the downloaded videos will be saved in that directory. Otherwise, they will be saved in the current directory.
-var pathFlage = flag.String("path", "", "path to the download directory")
+var pathFlag = flag.String("path", "", "path to the download directory")
+
+// the file containing the urls of the videos to download
+var urlsFlag = flag.String("urls", "urls.txt", "path to the file containing the urls of the videos to download")
 
 func main() {
 	flag.Parse()
 
-	urls, err := extractUrls("urls.txt")
+	urls, err := extractUrls(*urlsFlag)
 
 	if err != nil {
 		fmt.Println("couldn't extract urls from the file")
@@ -60,8 +63,8 @@ func downloadVideo(videoURL string) {
 
 	downloadPath := "%(title)s.%(ext)s"
 	
-	if *pathFlage != "" {
-		downloadPath = strings.ReplaceAll(*pathFlage, `\`, "/") + "/" + downloadPath
+	if *pathFlag != "" {
+		downloadPath = strings.ReplaceAll(*pathFlag, `\`, "/") + "/" + downloadPath
 	}
 	
 	cmd := exec.Command("./yt-dlp", "-o", downloadPath, videoURL)
