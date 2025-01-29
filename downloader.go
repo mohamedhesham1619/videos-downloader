@@ -32,7 +32,8 @@ func main() {
 	// start downloading videos concurrently
 	for i := 0; i < len(urls); i++ {
 		go func() {
-			downloadVideo(urls[i])
+			videoUrl, clipDuration := isClip(urls[i])
+			downloadVideo(videoUrl, clipDuration)
 			wg.Done()
 		}()
 	}
@@ -59,15 +60,29 @@ func extractUrls(fileName string) ([]string, error) {
 
 }
 
-func downloadVideo(videoURL string) {
+func isClip(url string) (videoURL string, clipDuration string) {
+
+	if strings.Contains(url, " ") {
+		urlParts := strings.Split(url, " ")
+		return urlParts[0], urlParts[1]
+	}
+
+	return url, ""
+}
+
+func downloadVideo(videoURL string, clipDuration string) {
 
 	downloadPath := "%(title)s.%(ext)s"
-	
+
 	if *pathFlag != "" {
 		downloadPath = strings.ReplaceAll(*pathFlag, `\`, "/") + "/" + downloadPath
 	}
-	
+
 	cmd := exec.Command("./yt-dlp", "-o", downloadPath, videoURL)
+
+	if clipDuration != "" {
+		cmd.Args = append(cmd.Args, "--download-sections", fmt.Sprintf("*%v", clipDuration))
+	}
 
 	// Set the output to the terminal for progress and errors
 	cmd.Stdout = os.Stdout
