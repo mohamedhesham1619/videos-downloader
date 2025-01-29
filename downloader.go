@@ -19,7 +19,7 @@ var urlsFlag = flag.String("urls", "urls.txt", "path to the file containing the 
 func main() {
 	flag.Parse()
 
-	urls, err := extractUrls(*urlsFlag)
+	urls, err := readUrlsFromFile(*urlsFlag)
 
 	if err != nil {
 		fmt.Println("couldn't extract urls from the file")
@@ -32,8 +32,8 @@ func main() {
 	// start downloading videos concurrently
 	for i := 0; i < len(urls); i++ {
 		go func() {
-			videoUrl, clipDuration := isClip(urls[i])
-			downloadVideo(videoUrl, clipDuration)
+			videoRequest := parseVideoRequest(urls[i])
+			downloadVideo(videoRequest)
 			wg.Done()
 		}()
 	}
@@ -43,7 +43,7 @@ func main() {
 }
 
 // extract urls from a text file into a slice of strings
-func extractUrls(fileName string) ([]string, error) {
+func readUrlsFromFile(fileName string) ([]string, error) {
 	content, err := os.ReadFile(fileName)
 
 	if err != nil {
@@ -60,37 +60,61 @@ func extractUrls(fileName string) ([]string, error) {
 
 }
 
-func isClip(url string) (videoURL string, clipDuration string) {
-
-	if strings.Contains(url, " ") {
-		urlParts := strings.Split(url, " ")
-		return urlParts[0], urlParts[1]
-	}
-
-	return url, ""
+type videoRequest struct {
+	url          string
+	isClip       bool   // default is false
+	clipDuration string // default is ""
 }
 
-func downloadVideo(videoURL string, clipDuration string) {
+func parseVideoRequest(line string) videoRequest {
 
-	downloadPath := "%(title)s.%(ext)s"
+	// split the line by spaces
+	parts := strings.Fields(line)
 
-	if *pathFlag != "" {
-		downloadPath = strings.ReplaceAll(*pathFlag, `\`, "/") + "/" + downloadPath
+	req := videoRequest{
+		url: parts[0],
 	}
 
-	cmd := exec.Command("./yt-dlp", "-o", downloadPath, videoURL)
-
-	if clipDuration != "" {
-		cmd.Args = append(cmd.Args, "--download-sections", fmt.Sprintf("*%v", clipDuration))
+	if len(parts) > 1 {
+		req.isClip = true
+		req.clipDuration = parts[1]
 	}
 
-	// Set the output to the terminal for progress and errors
+	return req
+}
+
+// prepare the download path
+// if the user provides a path flag, the downloaded videos will be saved in that directory. Otherwise, they will be saved in the current directory.
+func buildDownloadPath(basePath string) string {
+    downloadPath := "%(title)s.%(ext)s"
+    if basePath != "" {
+        downloadPath = strings.ReplaceAll(basePath, `\`, "/") + "/" + downloadPath
+    }
+    return downloadPath
+}
+
+// prepare the command to download the video
+func buildCommand(req videoRequest) *exec.Cmd {
+	downloadPath := buildDownloadPath(*pathFlag)
+	cmd := exec.Command("./yt-dlp", "-o", downloadPath, req.url)
+
+	// if the user wants to download a clip of the video, add the clip duration to the command
+	if(req.isClip) {
+		cmd.Args = append(cmd.Args, "--download-sections", fmt.Sprintf("*%v", req.clipDuration))
+	}
+
 	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+    cmd.Stderr = os.Stderr
+
+	return cmd
+}
+
+func downloadVideo(req videoRequest) {
+	command := buildCommand(req)
 
 	// Run the command
-	fmt.Println("Downloading video:", videoURL)
-	err := cmd.Run()
+	fmt.Println("Downloading video:", req.url)
+	err := command.Run()
 	if err != nil {
 		fmt.Println("Error downloading video:", err)
 		return
