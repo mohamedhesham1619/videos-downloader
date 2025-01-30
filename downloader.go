@@ -66,6 +66,10 @@ type videoRequest struct {
 	clipDuration string // default is ""
 }
 
+// parse the video request from the line in the file
+// if the clip duration is provided, only the clip will be downloaded
+// the clip duration should be in the format HH:MM:SS-HH:MM:SS
+// example: https://www.youtube.com/watch?v=video_id 00:00:00-00:01:10
 func parseVideoRequest(line string) videoRequest {
 
 	// split the line by spaces
@@ -86,11 +90,15 @@ func parseVideoRequest(line string) videoRequest {
 // prepare the download path
 // if the user provides a path flag, the downloaded videos will be saved in that directory. Otherwise, they will be saved in the current directory.
 func buildDownloadPath(basePath string) string {
-    downloadPath := "%(title)s.%(ext)s"
-    if basePath != "" {
-        downloadPath = strings.ReplaceAll(basePath, `\`, "/") + "/" + downloadPath
-    }
-    return downloadPath
+	downloadPath := "%(title)s.%(ext)s"
+
+	if basePath != "" {
+
+		// because the path flag is provided by the user, it may contain backslashes
+		downloadPath = strings.ReplaceAll(basePath, `\`, "/") + "/" + downloadPath
+
+	}
+	return downloadPath
 }
 
 // prepare the command to download the video
@@ -99,16 +107,17 @@ func buildCommand(req videoRequest) *exec.Cmd {
 	cmd := exec.Command("./yt-dlp", "-o", downloadPath, req.url)
 
 	// if the user wants to download a clip of the video, add the clip duration to the command
-	if(req.isClip) {
+	if req.isClip {
 		cmd.Args = append(cmd.Args, "--download-sections", fmt.Sprintf("*%v", req.clipDuration))
 	}
 
 	cmd.Stdout = os.Stdout
-    cmd.Stderr = os.Stderr
+	cmd.Stderr = os.Stderr
 
 	return cmd
 }
 
+// get the download command for the video request and run it
 func downloadVideo(req videoRequest) {
 	command := buildCommand(req)
 
