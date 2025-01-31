@@ -103,16 +103,34 @@ func buildDownloadPath(basePath string) string {
 
 // prepare the command to download the video
 func buildCommand(req videoRequest) *exec.Cmd {
-	downloadPath := buildDownloadPath(*pathFlag)
-	cmd := exec.Command("./yt-dlp", "-o", downloadPath, req.url)
+	//downloadPath := buildDownloadPath(*pathFlag)
+	cmd := exec.Command("./yt-dlp","-f", "b", "-g", req.url)
+	
+	// cmd.Stdout = os.Stdout
+	// cmd.Stderr = os.Stderr
+	output, err := cmd.Output()
+	
+
+	//fmt.Println("yt-dlp command output: ", string(output))
+
+	if err != nil {
+		fmt.Println("Error getting video info:", err)
+	}
 
 	// if the user wants to download a clip of the video, add the clip duration to the command
 	if req.isClip {
-		cmd.Args = append(cmd.Args, "--download-sections", fmt.Sprintf("*%v", req.clipDuration))
+		//cmd.Args = append(cmd.Args, "--download-sections", fmt.Sprintf("*%v", req.clipDuration))
+
+		ffmpegCmd := exec.Command(
+			"./ffmpeg", "-i", strings.TrimSpace(string(output)), 
+			"-ss", strings.Split(req.clipDuration, "-")[0], "-to", strings.Split(req.clipDuration, "-")[1], // Set the clip start and end time
+			"-c", "copy", // Copy without re-encoding (fast)
+			"outout.mp4",
+		)
+		return ffmpegCmd
 	}
 
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+
 
 	return cmd
 }
@@ -121,6 +139,7 @@ func buildCommand(req videoRequest) *exec.Cmd {
 func downloadVideo(req videoRequest) {
 	command := buildCommand(req)
 
+	fmt.Println("command: ", command)
 	// Run the command
 	fmt.Println("Downloading video:", req.url)
 	err := command.Run()
