@@ -87,62 +87,78 @@ func parseVideoRequest(line string) videoRequest {
 	return req
 }
 
-// prepare the download path
-// if the user provides a path flag, the downloaded videos will be saved in that directory. Otherwise, they will be saved in the current directory.
-func buildDownloadPath(basePath string) string {
+// prepare the command to download the whole video
+func buildFullDownloadCommand(req videoRequest) *exec.Cmd {
+
+	// this will download the video to the current directory with the title as the file name
 	downloadPath := "%(title)s.%(ext)s"
 
-	if basePath != "" {
+	// if the user provides a path flag, the downloaded videos will be saved in that directory
+	if *pathFlag != "" {
 
 		// because the path flag is provided by the user, it may contain backslashes
-		downloadPath = strings.ReplaceAll(basePath, `\`, "/") + "/" + downloadPath
+		downloadPath = strings.ReplaceAll(*pathFlag, `\`, "/") + "/" + downloadPath
 
 	}
-	return downloadPath
-}
 
-// prepare the command to download the video
-func buildCommand(req videoRequest) *exec.Cmd {
-	//downloadPath := buildDownloadPath(*pathFlag)
-	cmd := exec.Command("./yt-dlp","-f", "b", "-g", req.url)
-	
-	// cmd.Stdout = os.Stdout
-	// cmd.Stderr = os.Stderr
-	output, err := cmd.Output()
-	
-
-	//fmt.Println("yt-dlp command output: ", string(output))
-
-	if err != nil {
-		fmt.Println("Error getting video info:", err)
-	}
-
-	// if the user wants to download a clip of the video, add the clip duration to the command
-	if req.isClip {
-		//cmd.Args = append(cmd.Args, "--download-sections", fmt.Sprintf("*%v", req.clipDuration))
-
-		ffmpegCmd := exec.Command(
-			"./ffmpeg", "-i", strings.TrimSpace(string(output)), 
-			"-ss", strings.Split(req.clipDuration, "-")[0], "-to", strings.Split(req.clipDuration, "-")[1], // Set the clip start and end time
-			"-c", "copy", // Copy without re-encoding (fast)
-			"outout.mp4",
-		)
-		return ffmpegCmd
-	}
-
-
+	cmd := exec.Command("./yt-dlp", "-f", "b", req.url, "-o", downloadPath)
 
 	return cmd
 }
 
+// prepare the command to download the clip of the video
+func buildClipDownloadCommand(req videoRequest) *exec.Cmd {
+
+	// Get both URL and title
+	cmd := exec.Command("./yt-dlp",
+		"-f", "b", "-g", // Get URL
+		"--get-title", // Get title
+		req.url,
+	)
+
+	output, err := cmd.Output()
+
+	if err != nil {
+		fmt.Println("Error getting video URL and title:", err)
+	}
+
+	// Split output into lines
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+
+	if len(lines) < 2 {
+		// Handle error - expected both URL and title
+		fmt.Println("expected both URL and title but got:", lines)
+	}
+
+	videoTitle := lines[0]
+	videoURL := lines[1]
+
+	downloadPath := *pathFlag + videoTitle + ".mp4"
+
+	ffmpegCmd := exec.Command(
+		"./ffmpeg", "-i", videoURL,
+		"-ss", strings.Split(req.clipDuration, "-")[0], "-to", strings.Split(req.clipDuration, "-")[1], // Set the clip start and end time
+		"-c", "copy", // Copy without re-encoding (fast)
+		downloadPath,
+	)
+	return ffmpegCmd
+}
+
 // get the download command for the video request and run it
 func downloadVideo(req videoRequest) {
-	command := buildCommand(req)
 
-	fmt.Println("command: ", command)
+	var command *exec.Cmd
+
+	if req.isClip {
+		command = buildClipDownloadCommand(req)
+	} else {
+		command = buildFullDownloadCommand(req)
+	}
+
 	// Run the command
 	fmt.Println("Downloading video:", req.url)
 	err := command.Run()
+
 	if err != nil {
 		fmt.Println("Error downloading video:", err)
 		return
