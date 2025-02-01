@@ -109,10 +109,11 @@ func buildFullDownloadCommand(req videoRequest) *exec.Cmd {
 // prepare the command to download the clip of the video
 func buildClipDownloadCommand(req videoRequest) *exec.Cmd {
 
-	// Get both URL and title
+	// Get both the URL and the title with the extension
 	cmd := exec.Command("./yt-dlp",
-		"-f", "b", "-g", // Get URL
-		"--get-title", // Get title
+		"-f", "b",
+		"--print", "%(title)s.%(ext)s\n%(url)s",
+		"--no-download",
 		req.url,
 	)
 
@@ -126,21 +127,27 @@ func buildClipDownloadCommand(req videoRequest) *exec.Cmd {
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
 
 	if len(lines) < 2 {
-		// Handle error - expected both URL and title
+
 		fmt.Println("expected both URL and title but got:", lines)
 	}
 
 	videoTitle := lines[0]
 	videoURL := lines[1]
 
-	downloadPath := *pathFlag + videoTitle + ".mp4"
+	downloadPath := *pathFlag + videoTitle
+
+	clipDuration := strings.Split(req.clipDuration, "-")
+	clipStart := clipDuration[0]
+	clipEnd := clipDuration[1]
 
 	ffmpegCmd := exec.Command(
 		"./ffmpeg", "-i", videoURL,
-		"-ss", strings.Split(req.clipDuration, "-")[0], "-to", strings.Split(req.clipDuration, "-")[1], // Set the clip start and end time
+		"-ss", clipStart, // Set the clip start and end time
+		"-to", clipEnd,
 		"-c", "copy", // Copy without re-encoding (fast)
 		downloadPath,
 	)
+	
 	return ffmpegCmd
 }
 
