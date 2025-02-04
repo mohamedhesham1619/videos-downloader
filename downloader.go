@@ -98,6 +98,7 @@ func buildFullDownloadCommand(req videoRequest) *exec.Cmd {
 
 		// because the path flag is provided by the user, it may contain backslashes
 		downloadPath = strings.ReplaceAll(*pathFlag, `\`, "/") + "/" + downloadPath
+		//downloadPath = *pathFlag + "/" + downloadPath
 
 	}
 
@@ -113,6 +114,7 @@ func buildClipDownloadCommand(req videoRequest) *exec.Cmd {
 	cmd := exec.Command("./yt-dlp",
 		"-f", "b",
 		"--print", "%(title)s.%(ext)s\n%(url)s",
+		"--encoding", "UTF-8",
 		"--no-download",
 		req.url,
 	)
@@ -134,7 +136,13 @@ func buildClipDownloadCommand(req videoRequest) *exec.Cmd {
 	videoTitle := lines[0]
 	videoURL := lines[1]
 
-	downloadPath := *pathFlag + videoTitle
+	// download the clip to the current directory with the title as the file name
+	downloadPath := videoTitle
+
+	// if the user provides a path flag, the downloaded videos will be saved in that directory
+	if *pathFlag != "" {
+		downloadPath = *pathFlag + "/" + downloadPath
+	}
 
 	clipDuration := strings.Split(req.clipDuration, "-")
 	clipStart := clipDuration[0]
@@ -147,7 +155,7 @@ func buildClipDownloadCommand(req videoRequest) *exec.Cmd {
 		"-c", "copy", // Copy without re-encoding (fast)
 		downloadPath,
 	)
-	
+
 	return ffmpegCmd
 }
 
