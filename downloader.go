@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"unicode"
 )
 
 // if the user provides a path flag, the downloaded videos will be saved in that directory. Otherwise, they will be saved in the current directory.
@@ -107,6 +108,33 @@ func buildFullDownloadCommand(req videoRequest) *exec.Cmd {
 	return cmd
 }
 
+// sanitize the filename to remove or replace characters that are problematic in filenames
+func sanitizeFilename(filename string) string {
+
+	replacements := map[rune]rune{
+		'/':  '-',
+		'\\': '-',
+		':':  '-',
+		'*':  '-',
+		'?':  '-',
+		'"':  '-',
+		'<':  '-',
+		'>':  '-',
+		'|':  '-',
+	}
+
+	sanitized := []rune{}
+	for _, r := range filename {
+		if replaced, exists := replacements[r]; exists {
+			sanitized = append(sanitized, replaced)
+		} else if unicode.IsPrint(r) {
+			sanitized = append(sanitized, r)
+		}
+	}
+
+	return string(sanitized)
+}
+
 // prepare the command to download the clip of the video
 func buildClipDownloadCommand(req videoRequest) *exec.Cmd {
 
@@ -133,7 +161,7 @@ func buildClipDownloadCommand(req videoRequest) *exec.Cmd {
 		fmt.Println("expected both URL and title but got:", lines)
 	}
 
-	videoTitle := lines[0]
+	videoTitle := sanitizeFilename(lines[0])
 	videoURL := lines[1]
 
 	// download the clip to the current directory with the title as the file name
@@ -170,12 +198,14 @@ func downloadVideo(req videoRequest) {
 		command = buildFullDownloadCommand(req)
 	}
 
-	// Run the command
+	// Run the command 
 	fmt.Println("Downloading video:", req.url)
-	err := command.Run()
+
+	output, err := command.CombinedOutput()
 
 	if err != nil {
 		fmt.Println("Error downloading video:", err)
+		fmt.Println("Output:", string(output))
 		return
 	}
 
