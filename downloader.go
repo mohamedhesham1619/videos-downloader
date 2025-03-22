@@ -6,8 +6,10 @@ import (
 	"os"
 	"os/exec"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"unicode"
 )
 
@@ -31,7 +33,7 @@ func main() {
 	wg.Add(len(urls))
 
 	// start downloading videos concurrently
-	for i := 0; i < len(urls); i++ {
+	for i := range urls {
 		go func() {
 			videoRequest := parseVideoRequest(urls[i])
 			downloadVideo(videoRequest)
@@ -86,6 +88,41 @@ func parseVideoRequest(line string) videoRequest {
 	}
 
 	return req
+}
+
+// Helper function to parse clip timing info
+func parseClipDuration(timeRange string) (start string, duration string, err error) {
+	// Split the range into start and end times
+	parts := strings.Split(timeRange, "-")
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("invalid time range format. Expected HH:MM:SS-HH:MM:SS")
+	}
+
+	startTime := parts[0]
+	endTime := parts[1]
+
+	// Parse times to calculate duration
+	layout := "15:04:05"
+
+	t1, err := time.Parse(layout, startTime)
+	if err != nil {
+		return "", "", fmt.Errorf("invalid start time: %v", err)
+	}
+
+	t2, err := time.Parse(layout, endTime)
+	if err != nil {
+		return "", "", fmt.Errorf("invalid end time: %v", err)
+	}
+
+	// Calculate duration in seconds
+	durationSeconds := int(t2.Sub(t1).Seconds())
+
+	duration = strconv.Itoa(durationSeconds)
+	if err != nil {
+		return "", "", fmt.Errorf("error converting duration to string: %v", err)
+	}
+
+	return startTime, duration, nil
 }
 
 // prepare the command to download the whole video
@@ -172,14 +209,17 @@ func buildClipDownloadCommand(req videoRequest) *exec.Cmd {
 		downloadPath = *pathFlag + "/" + downloadPath
 	}
 
-	clipDuration := strings.Split(req.clipDuration, "-")
-	clipStart := clipDuration[0]
-	clipEnd := clipDuration[1]
+	clipStart, clipDuration, err := parseClipDuration(req.clipDuration)
+
+	if err != nil {
+		fmt.Println("Error parsing clip duration:", err)
+	}
 
 	ffmpegCmd := exec.Command(
-		"./ffmpeg", "-i", videoURL,
-		"-ss", clipStart, // Set the clip start and end time
-		"-to", clipEnd,
+		"./ffmpeg",
+		"-ss", clipStart,
+		"-i", videoURL,
+		"-t", clipDuration,
 		"-c", "copy", // Copy without re-encoding (fast)
 		downloadPath,
 	)
@@ -198,7 +238,7 @@ func downloadVideo(req videoRequest) {
 		command = buildFullDownloadCommand(req)
 	}
 
-	// Run the command 
+	// Run the command
 	fmt.Println("Downloading video:", req.url)
 
 	output, err := command.CombinedOutput()
