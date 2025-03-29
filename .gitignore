@@ -5,3 +5,5 @@
 *.rar
 *.zip
 *.md
+old-downloader.go
+/release
