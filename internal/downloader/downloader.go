@@ -69,13 +69,11 @@ func (d *Downloader) buildClipDownloadCommand(req models.VideoRequest) (*exec.Cm
 
 	// Get both the URL and the title with the extension
 	cmd := exec.Command("./yt-dlp",
-		"-f", "b[ext=mp4]/bv*[ext=mp4]+ba[ext=m4a]/bv*+ba/b",
-		"--print", "%(title).244s.%(ext)s\n%(url)s",
+		"-f", "bv*+ba/b/best",
+		"--print", "%(title).244s.%(ext)s\n%(urls)s",
 		"--encoding", "utf-8",
 		"--no-download",
-		"--windows-filenames",
-		"--output-na-placeholder", "_",
-		"--no-warnings", // Reduce noise in output
+		"--no-warnings",
 		req.Url,
 	)
 
@@ -94,8 +92,6 @@ func (d *Downloader) buildClipDownloadCommand(req models.VideoRequest) (*exec.Cm
 	}
 
 	videoTitle := utils.SanitizeFilename(lines[0])
-	videoURL := lines[1]
-
 	downloadPath := filepath.Join(d.Config.DownloadPath, videoTitle)
 
 	clipStart, clipDuration, err := utils.ParseClipDuration(req.ClipTimeRange)
@@ -104,17 +100,36 @@ func (d *Downloader) buildClipDownloadCommand(req models.VideoRequest) (*exec.Cm
 		return nil, fmt.Errorf("error parsing clip duration: %v", err)
 	}
 
-	ffmpegCmd := exec.Command(
-		"./ffmpeg",
-		"-ss", clipStart,
-		"-i", videoURL,
-		"-t", clipDuration,
+	var ffmpegCmd *exec.Cmd
 
-		// Copy without re-encoding (the clip may start few seconds earlier than the specified time or the first few seconds in the video can be frozed. Remove this flag to fix these issues but it will increase the cpu usage and slow down the download process)
-		"-c", "copy",
+	// Multiple URLs (separate video and audio)
+	if len(lines) > 2 {
+		videoUrl := lines[1]
+		audioUrl := lines[2]
 
-		downloadPath,
-	)
+		ffmpegCmd = exec.Command(
+			"./ffmpeg",
+			"-ss", clipStart, // Seek position for video
+			"-i", videoUrl,
+			"-ss", clipStart, // Seek position for audio
+			"-i", audioUrl,
+			"-t", clipDuration,
+			// Copy without re-encoding (the clip may start few seconds earlier than the specified time or the first few seconds in the video can be frozen. Remove this flag to fix these issues but it will increase the cpu usage and slow down the download process)
+			"-c", "copy",
+			downloadPath,
+		)
+	} else { // Single URL (combined format)
+		
+		url := lines[1]
+		ffmpegCmd = exec.Command(
+			"./ffmpeg",
+			"-ss", clipStart,
+			"-i", url,
+			"-t", clipDuration,
+			"-c", "copy",
+			downloadPath,
+		)
+	}
 
 	return ffmpegCmd, nil
 }

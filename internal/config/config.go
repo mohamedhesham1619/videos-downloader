@@ -3,6 +3,7 @@ package config
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 )
 
@@ -13,19 +14,23 @@ type Config struct {
 }
 
 func New() *Config {
-	cfg := &Config{
-		UrlsFile: *flag.String("urlsFile", "urls.txt", "only the file name if it's in the same directory as the program or the full path if it's in another"),
 
-		DownloadPath: *flag.String("downloadPath", "", "the path to the download directory (the default is the directory where the program is executed)"),
-	}
+	urlsFlag := flag.String("urls", "urls.txt", "only the file name if it's in the same directory as the program or the full path if it's in another directory")
+
+	pathFlag := flag.String("path", "", "path to the download directory (the default is the current directory)")
 
 	flag.Parse()
+
+	cfg := &Config{
+		UrlsFile:     *urlsFlag,
+		DownloadPath: *pathFlag,
+	}
 
 	// if the user provides a path flag, the downloaded videos will be saved in that directory. Otherwise, they will be saved in the "downloads" folder in the current directory.
 	if cfg.DownloadPath == "" {
 		err := os.MkdirAll("downloads", os.ModePerm)
 		if err != nil {
-			fmt.Printf("Error creating the downloads directory: %v\nVideos will be downloaded in the current directory", err)
+			log.Fatal(fmt.Errorf("error creating downloads directory: %v", err))
 		}
 		cfg.DownloadPath = "downloads"
 	}
