@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"sync"
 	"videos-downloader/internal/config"
 	"videos-downloader/internal/downloader"
@@ -15,8 +16,8 @@ func main() {
 	urls, err := utils.ReadUrlsFromFile(cfg.UrlsFile)
 
 	if err != nil {
-		fmt.Println(err)
-		return
+
+		log.Fatal("Error reading urls from file \n", err)
 	}
 
 	wg := sync.WaitGroup{}

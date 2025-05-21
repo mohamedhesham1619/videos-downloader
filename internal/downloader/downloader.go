@@ -91,7 +91,7 @@ func (d *Downloader) buildClipDownloadCommand(req models.VideoRequest) (*exec.Cm
 		return nil, fmt.Errorf("expected both URL and title but got:%v", lines)
 	}
 
-	videoTitle := utils.SanitizeFilename(lines[0]) + ".mp4" 
+	videoTitle := utils.SanitizeFilename(lines[0]) + ".mp4"
 	downloadPath := filepath.Join(d.Config.DownloadPath, videoTitle)
 
 	clipStart, clipDuration, err := utils.ParseClipDuration(req.ClipTimeRange)
@@ -114,32 +114,45 @@ func (d *Downloader) buildClipDownloadCommand(req models.VideoRequest) (*exec.Cm
 			"-ss", clipStart, // Seek position for audio
 			"-i", audioUrl,
 			"-t", clipDuration,
-
-			"-c:v", "h264_nvenc", // Use NVIDIA GPU encoder
-			"-preset", "p4", // NVIDIA preset (p1-p7, p1=slow/best, p7=fast/worst)
-			"-c:a", "aac", // Audio codec
-			"-b:a", "128k", // Audio bitrate
-			// Copy without re-encoding (the clip may start few seconds earlier than the specified time or the first few seconds in the video can be frozen. Remove this flag to fix these issues but it will increase the cpu usage and slow down the download process)
-			// "-c", "copy",
-			downloadPath,
 		)
+
+		// If fast mode is enabled, copy the streams without re-encoding
+		// Otherwise, use the GPU encoder
+		if d.Config.IsFastMode {
+			ffmpegCmd.Args = append(ffmpegCmd.Args,
+				"-c", "copy",
+				downloadPath)
+		} else {
+			ffmpegCmd.Args = append(ffmpegCmd.Args,
+				"-c:v", d.Config.Encoder,
+				"-q:a", "0", // Highest audio quality
+				downloadPath)
+		}
 	} else { // Single URL (combined format)
 
 		url := lines[1]
+
 		ffmpegCmd = exec.Command(
 			"./ffmpeg",
-			"-ss", clipStart,
+			"-ss", clipStart, // Seek position
 			"-i", url,
 			"-t", clipDuration,
-			"-c:v", "h264_nvenc", // Use NVIDIA GPU encoder
-			"-preset", "p4", // NVIDIA preset (p1-p7, p1=slow/best, p7=fast/worst)
-			"-c:a", "aac", // Audio codec
-			"-b:a", "128k", // Audio bitrate
-
-			// "-c", "copy",
-			downloadPath,
 		)
+		if d.Config.IsFastMode {
+
+			ffmpegCmd.Args = append(ffmpegCmd.Args,
+				"-c", "copy", // Copy the stream without re-encoding
+				downloadPath,
+			)
+		} else {
+			ffmpegCmd.Args = append(ffmpegCmd.Args,
+				"-c:v", d.Config.Encoder, 
+				"-q:a", "0",	// Highest audio quality
+				downloadPath,
+			)
+		}
 	}
 
 	return ffmpegCmd, nil
 }
+

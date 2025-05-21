@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -116,4 +117,21 @@ func SanitizeFilename(filename string) string {
 	}
 
 	return string(sanitized)
+}
+
+// Test if the GPU encoder is working
+// If the command runs successfully and doesn't return an error, the encoder is working
+func TestGpuEncoder(encoder string) bool {
+    testCmd := exec.Command(
+        "./ffmpeg",
+        "-hide_banner",
+        "-loglevel", "error",
+        "-f", "lavfi",
+        "-i", "testsrc=duration=1",
+        "-c:v", encoder,
+        "-frames:v", "10",
+        "-f", "null",
+        "-",
+    )
+    return testCmd.Run() == nil
 }
