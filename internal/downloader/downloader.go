@@ -8,6 +8,8 @@ import (
 	"videos-downloader/internal/config"
 	"videos-downloader/internal/models"
 	"videos-downloader/internal/utils"
+
+	"github.com/fatih/color"
 )
 
 type Downloader struct {
@@ -35,15 +37,14 @@ func (d *Downloader) Download(video models.VideoRequest) error {
 	}
 
 	// Run the command
-	fmt.Println("Downloading video:", video.Url)
-
+	fmt.Printf("Downloading video: %s\n\n", video.Url)
 	output, err := command.CombinedOutput()
 
 	if err != nil {
-		return fmt.Errorf("error downloading video: %v\nOutput: %s", err, string(output))
+		return fmt.Errorf("%s%v%s", color.RedString("error downloading ("), video.Url, color.RedString("): "+err.Error()+"\nOutput: "+string(output)))
 	}
 
-	fmt.Println("Download complete.")
+	fmt.Printf("%s %s\n\n", color.GreenString("Download completed:"), video.Url)
 	return nil
 }
 
@@ -64,14 +65,15 @@ func (d *Downloader) buildFullDownloadCommand(req models.VideoRequest) *exec.Cmd
 	return cmd
 }
 
-// prepare the command to download the clip of the video
+// prepare the command to download a clip of the video
 func (d *Downloader) buildClipDownloadCommand(req models.VideoRequest) (*exec.Cmd, error) {
 
-	// Get both the URL and the title with the extension
+	// Get both the direct URL and the title with the extension
 	cmd := exec.Command("./yt-dlp",
 		"-f", "bv*+ba/b/best",
 		"--print", "%(title).244s\n%(urls)s",
 		"--encoding", "utf-8",
+		"--no-playlist",
 		"--no-download",
 		"--no-warnings",
 		req.Url,
@@ -81,7 +83,7 @@ func (d *Downloader) buildClipDownloadCommand(req models.VideoRequest) (*exec.Cm
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		return nil, fmt.Errorf("error getting video info: %v\noutput:%v", err, string(output))
+		return nil, fmt.Errorf("error getting (%v) info: %v\noutput:%v", req.Url, err, string(output))
 	}
 
 	// Split output into lines
@@ -117,7 +119,7 @@ func (d *Downloader) buildClipDownloadCommand(req models.VideoRequest) (*exec.Cm
 		)
 
 		// If fast mode is enabled, copy the streams without re-encoding
-		// Otherwise, use the GPU encoder
+		// Otherwise, use the encoder
 		if d.Config.IsFastMode {
 			ffmpegCmd.Args = append(ffmpegCmd.Args,
 				"-c", "copy",
@@ -146,8 +148,8 @@ func (d *Downloader) buildClipDownloadCommand(req models.VideoRequest) (*exec.Cm
 			)
 		} else {
 			ffmpegCmd.Args = append(ffmpegCmd.Args,
-				"-c:v", d.Config.Encoder, 
-				"-q:a", "0",	// Highest audio quality
+				"-c:v", d.Config.Encoder,
+				"-q:a", "0", // Highest audio quality
 				downloadPath,
 			)
 		}
@@ -155,4 +157,3 @@ func (d *Downloader) buildClipDownloadCommand(req models.VideoRequest) (*exec.Cm
 
 	return ffmpegCmd, nil
 }
-

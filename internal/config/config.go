@@ -3,19 +3,16 @@ package config
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"videos-downloader/internal/models"
 	"videos-downloader/internal/utils"
 
+	"github.com/fatih/color"
 	"github.com/jaypipes/ghw"
 )
 
 type Config struct {
-
-	// the file containing the urls of the videos to download (only the file name if it's in the same directory as the program or the full path if it's in another)
-	UrlsFile string
 
 	// the path to the download directory (the default is the directory where the program is executed)
 	DownloadPath string
@@ -34,51 +31,24 @@ type Config struct {
 
 func New() *Config {
 
-	urlsFlag := flag.String("urls", "urls.txt", "only the file name if it's in the same directory as the program or the full path if it's in another directory")
-
 	pathFlag := flag.String("path", "", "path to the download directory (the default is the current directory)")
 
 	fastFlag := flag.Bool("fast", false, "Fast mode: copies streams directly without re-encoding. Much faster but clips may start slightly early or have frozen frames at the beginning")
 
 	flag.Parse()
 
-	gpu := ""
 	encoder := ""
 
+	// If the fast flag is not used, select the encoder based on the GPU. If the GPU is not detected or the GPU encoder is not working, the CPU encoder will be used.
+
+	// If the fast flag is used, the encoder will be ignored and the streams will be copied directly without re-encoding.
 	if !*fastFlag {
-		// get the GPU information
-		if gpuInfo, err := ghw.GPU(); err == nil {
-
-			gpuVendorName := gpuInfo.GraphicsCards[0].DeviceInfo.Vendor.Name
-
-			// Check the GPU vendor name and set the GPU variable accordingly
-			switch {
-
-			case strings.Contains(strings.ToLower(gpuVendorName), "nvidia"):
-				gpu = models.NvidiaGPU
-			case strings.Contains(strings.ToLower(gpuVendorName), "amd") || strings.Contains(strings.ToLower(gpuVendorName), "advanced micro devices"):
-				gpu = models.AMDGPU
-			case strings.Contains(strings.ToLower(gpuVendorName), "intel"):
-				gpu = models.IntelGPU
-			}
-
-			// Check if the GPU encoder is working
-			if gpu != "" {
-				encoder = models.GPUEncoders[gpu]
-				if utils.TestGpuEncoder(encoder) {
-					fmt.Println("Using GPU encoder:", encoder)
-				} else {
-					fmt.Printf("GPU encoder %s is not working. Falling back to CPU encoder %s\n", encoder, models.CPUEncoder)
-
-					encoder = models.CPUEncoder
-				}
-			}
-		} else {
-			fmt.Println("Error getting GPU info:", err)
-		}
+		encoder = selectEncoder()
+	} else {
+		color.Cyan("Fast mode enabled: copying streams directly without re-encoding.\n")
 	}
+
 	cfg := &Config{
-		UrlsFile:     *urlsFlag,
 		DownloadPath: *pathFlag,
 		Encoder:      encoder,
 		IsFastMode:   *fastFlag,
@@ -88,10 +58,51 @@ func New() *Config {
 	if cfg.DownloadPath == "" {
 		err := os.MkdirAll("downloads", os.ModePerm)
 		if err != nil {
-			log.Fatal(fmt.Errorf("error creating downloads directory: %v", err))
+			fmt.Printf("Error creating downloads directory: %v Will use the current directory instead.\n\n", err)
+			cfg.DownloadPath = ""
+		} else {
+			cfg.DownloadPath = "downloads"
 		}
-		cfg.DownloadPath = "downloads"
+
 	}
 
 	return cfg
+}
+
+func detectGpu() (string, error) {
+
+	gpuInfo, err := ghw.GPU()
+
+	if err != nil {
+		return "", fmt.Errorf("error getting GPU info: %v", err)
+	}
+
+	gpu := ""
+	gpuVendorName := strings.ToLower(gpuInfo.GraphicsCards[0].DeviceInfo.Vendor.Name)
+
+	// Check the GPU vendor name and set the GPU variable accordingly
+	switch {
+
+	case strings.Contains(gpuVendorName, "nvidia"):
+		gpu = models.NvidiaGPU
+	case strings.Contains(gpuVendorName, "amd") || strings.Contains(gpuVendorName, "advanced micro devices"):
+		gpu = models.AMDGPU
+	case strings.Contains(gpuVendorName, "intel"):
+		gpu = models.IntelGPU
+	}
+
+	return gpu, nil
+
+}
+
+// If the fast flag is not used, the encoder will be selected based on the GPU. If the GPU is not detected or the GPU encoder is not working, the CPU encoder will be used.
+func selectEncoder() string {
+	gpu, err := detectGpu()
+	if err != nil || gpu == "" || !utils.TestGpuEncoder(models.GPUEncoders[gpu]) {
+		color.Cyan("Could not use GPU encoder. Falling back to CPU encoder:", models.CPUEncoder, "\n")
+		return models.CPUEncoder
+	}
+
+	color.Cyan("Using %s encoder: %s\n", gpu, models.GPUEncoders[gpu])
+	return models.GPUEncoders[gpu]
 }

@@ -6,14 +6,13 @@ type VideoRequest struct {
 	ClipTimeRange string // should be in the format HH:MM:SS-HH:MM:SS
 }
 
-
 const (
-    // GPU vendors
+	// GPU vendors
 	NvidiaGPU = "nvidia"
 	AMDGPU    = "amd"
 	IntelGPU  = "intel"
 
-    // Default CPU encoder
+	// Default CPU encoder
 	CPUEncoder = "libx264"
 )
 

@@ -12,6 +12,8 @@ import (
 	"videos-downloader/internal/models"
 )
 
+// ReadUrlsFromFile reads URLs from a file and returns them as a slice of strings.
+// It ignores empty lines and trims whitespace from each line.
 func ReadUrlsFromFile(fileName string) ([]string, error) {
 	file, err := os.Open(fileName)
 

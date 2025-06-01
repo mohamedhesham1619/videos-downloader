@@ -1,9 +1,5 @@
-*.exe
-*.mkv
-*.txt
+test.go
+release/*
+!release/.gitkeep
 *.mp4
-*.rar
-*.zip
-*.md
-old-downloader.go
-/release
+*.txt
