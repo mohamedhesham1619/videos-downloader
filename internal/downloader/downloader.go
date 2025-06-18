@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"videos-downloader/internal/config"
 	"videos-downloader/internal/models"
@@ -37,14 +38,23 @@ func (d *Downloader) Download(video models.VideoRequest) error {
 	}
 
 	// Run the command
-	fmt.Printf("Downloading video: %s\n\n", video.Url)
+	if video.IsClip {
+		fmt.Printf("%s\n", formatClipDownloadMessage(video.ClipTimeRange))
+		fmt.Printf("From URL: %s\n\n", video.Url)
+	} else {
+		fmt.Printf("Downloading video: %s\n\n", video.Url)
+	}
 	output, err := command.CombinedOutput()
 
 	if err != nil {
 		return fmt.Errorf("%s%v%s", color.RedString("error downloading ("), video.Url, color.RedString("): "+err.Error()+"\nOutput: "+string(output)))
 	}
 
-	fmt.Printf("%s %s\n\n", color.GreenString("Download completed:"), video.Url)
+	if video.IsClip {
+		fmt.Printf("%s Clip from %s\n\n", color.GreenString("Download completed:"), video.Url)
+	} else {
+		fmt.Printf("%s %s\n\n", color.GreenString("Download completed:"), video.Url)
+	}
 	return nil
 }
 
@@ -156,4 +166,20 @@ func (d *Downloader) buildClipDownloadCommand(req models.VideoRequest) (*exec.Cm
 	}
 
 	return ffmpegCmd, nil
+}
+
+// formatClipDownloadMessage formats a user-friendly message for clip downloads
+func formatClipDownloadMessage(timeRange string) string {
+	_, durationStr, err := utils.ParseClipDuration(timeRange)
+	if err != nil {
+		return ""
+	}
+
+	durationSecs, _ := strconv.Atoi(durationStr)
+	startTime, endTime := strings.Split(timeRange, "-")[0], strings.Split(timeRange, "-")[1]
+
+	return fmt.Sprintf("Downloading clip: %s duration (from %s to %s)",
+		color.CyanString(utils.FormatDuration(durationSecs)),
+		color.YellowString(startTime),
+		color.YellowString(endTime))
 }

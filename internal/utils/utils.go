@@ -124,16 +124,26 @@ func SanitizeFilename(filename string) string {
 // Test if the GPU encoder is working
 // If the command runs successfully and doesn't return an error, the encoder is working
 func TestGpuEncoder(encoder string) bool {
-    testCmd := exec.Command(
-        "./ffmpeg",
-        "-hide_banner",
-        "-loglevel", "error",
-        "-f", "lavfi",
-        "-i", "testsrc=duration=1",
-        "-c:v", encoder,
-        "-frames:v", "10",
-        "-f", "null",
-        "-",
-    )
-    return testCmd.Run() == nil
+	testCmd := exec.Command(
+		"./ffmpeg",
+		"-hide_banner",
+		"-loglevel", "error",
+		"-f", "lavfi",
+		"-i", "testsrc=duration=1",
+		"-c:v", encoder,
+		"-frames:v", "10",
+		"-f", "null",
+		"-",
+	)
+	return testCmd.Run() == nil
+}
+
+// FormatDuration formats a duration in seconds to a human-readable string (e.g., "2m 30s")
+func FormatDuration(seconds int) string {
+	m := seconds / 60
+	s := seconds % 60
+	if m > 0 {
+		return fmt.Sprintf("%dm %ds", m, s)
+	}
+	return fmt.Sprintf("%ds", s)
 }
