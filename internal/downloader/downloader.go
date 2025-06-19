@@ -4,12 +4,10 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"videos-downloader/internal/config"
 	"videos-downloader/internal/models"
 	"videos-downloader/internal/utils"
-
 	"github.com/fatih/color"
 )
 
@@ -39,7 +37,7 @@ func (d *Downloader) Download(video models.VideoRequest) error {
 
 	// Run the command
 	if video.IsClip {
-		fmt.Printf("%s\n", formatClipDownloadMessage(video.ClipTimeRange))
+		fmt.Println(utils.FormatClipDownloadMessage(video.ClipTimeRange))
 		fmt.Printf("From URL: %s\n\n", video.Url)
 	} else {
 		fmt.Printf("Downloading video: %s\n\n", video.Url)
@@ -67,7 +65,8 @@ func (d *Downloader) buildFullDownloadCommand(req models.VideoRequest) *exec.Cmd
 	// - %(ext)s: file extension based on selected format
 	downloadPath := filepath.Join(d.Config.DownloadPath, "%(title).244s.%(ext)s")
 
-	cmd := exec.Command("./yt-dlp",
+	cmd := exec.Command(
+		utils.GetCommand("yt-dlp"),
 		"-f", "b",
 		"-o", downloadPath,
 		req.Url)
@@ -79,15 +78,14 @@ func (d *Downloader) buildFullDownloadCommand(req models.VideoRequest) *exec.Cmd
 func (d *Downloader) buildClipDownloadCommand(req models.VideoRequest) (*exec.Cmd, error) {
 
 	// Get both the direct URL and the title with the extension
-	cmd := exec.Command("./yt-dlp",
+	cmd := exec.Command(
+		utils.GetCommand("yt-dlp"),
 		"-f", "bv*+ba/b/best",
 		"--print", "%(title).244s\n%(urls)s",
 		"--encoding", "utf-8",
 		"--no-playlist",
-		"--no-download",
 		"--no-warnings",
-		req.Url,
-	)
+		req.Url)
 
 	// Run the command and get the output
 	output, err := cmd.CombinedOutput()
@@ -120,7 +118,7 @@ func (d *Downloader) buildClipDownloadCommand(req models.VideoRequest) (*exec.Cm
 		audioUrl := lines[2]
 
 		ffmpegCmd = exec.Command(
-			"./ffmpeg",
+			utils.GetCommand("ffmpeg"),
 			"-ss", clipStart, // Seek position for video
 			"-i", videoUrl,
 			"-ss", clipStart, // Seek position for audio
@@ -145,7 +143,7 @@ func (d *Downloader) buildClipDownloadCommand(req models.VideoRequest) (*exec.Cm
 		url := lines[1]
 
 		ffmpegCmd = exec.Command(
-			"./ffmpeg",
+			utils.GetCommand("ffmpeg"),
 			"-ss", clipStart, // Seek position
 			"-i", url,
 			"-t", clipDuration,
@@ -166,20 +164,4 @@ func (d *Downloader) buildClipDownloadCommand(req models.VideoRequest) (*exec.Cm
 	}
 
 	return ffmpegCmd, nil
-}
-
-// formatClipDownloadMessage formats a user-friendly message for clip downloads
-func formatClipDownloadMessage(timeRange string) string {
-	_, durationStr, err := utils.ParseClipDuration(timeRange)
-	if err != nil {
-		return ""
-	}
-
-	durationSecs, _ := strconv.Atoi(durationStr)
-	startTime, endTime := strings.Split(timeRange, "-")[0], strings.Split(timeRange, "-")[1]
-
-	return fmt.Sprintf("Downloading clip: %s duration (from %s to %s)",
-		color.CyanString(utils.FormatDuration(durationSecs)),
-		color.YellowString(startTime),
-		color.YellowString(endTime))
 }

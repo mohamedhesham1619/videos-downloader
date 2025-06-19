@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 	"unicode"
 	"videos-downloader/internal/models"
+
+	"github.com/fatih/color"
 )
 
 // ReadUrlsFromFile reads URLs from a file and returns them as a slice of strings.
@@ -121,11 +124,22 @@ func SanitizeFilename(filename string) string {
 	return string(sanitized)
 }
 
+// Returns the right command to be executed based on the OS
+// For Windows, the executable needs to be in the same directory as the Go binary and the command needs to be prefixed with "./"
+//
+// For other OSes, the command can be executed directly
+func GetCommand(command string) string {
+	if runtime.GOOS == "windows" {
+		return fmt.Sprintf("./%s", command)
+	}
+	return command
+}
+
 // Test if the GPU encoder is working
 // If the command runs successfully and doesn't return an error, the encoder is working
 func TestGpuEncoder(encoder string) bool {
 	testCmd := exec.Command(
-		"./ffmpeg",
+		GetCommand("ffmpeg"),
 		"-hide_banner",
 		"-loglevel", "error",
 		"-f", "lavfi",
@@ -146,4 +160,20 @@ func FormatDuration(seconds int) string {
 		return fmt.Sprintf("%dm %ds", m, s)
 	}
 	return fmt.Sprintf("%ds", s)
+}
+
+// Formats a user-friendly message for clip downloads
+func FormatClipDownloadMessage(timeRange string) string {
+	_, durationStr, err := ParseClipDuration(timeRange)
+	if err != nil {
+		return ""
+	}
+
+	durationSecs, _ := strconv.Atoi(durationStr)
+	startTime, endTime := strings.Split(timeRange, "-")[0], strings.Split(timeRange, "-")[1]
+
+	return fmt.Sprintf("Downloading clip: %s duration (from %s to %s)",
+		color.CyanString(FormatDuration(durationSecs)),
+		color.YellowString(startTime),
+		color.YellowString(endTime))
 }
