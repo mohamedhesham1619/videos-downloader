@@ -38,7 +38,7 @@ A command-line tool written in Go for downloading videos and clips from various 
 ## Installation
 
 ### Option 1 - Download Latest Release (Windows only)
-1. Download the [latest release](https://drive.google.com/file/d/1hPOFOAebPspRruxmSvxdyORNsBoGDuJn/view?usp=drive_link).
+1. Download the [latest release](https://drive.google.com/file/d/1qQ3MYyxfiB-e5mkLPDc9_nt4aHCC58h3/view?usp=drive_link).
    - The release contains the following files:
      - `downloader.exe`: Main executable
      - `ffmpeg.exe`: FFmpeg binary for clip processing
@@ -106,7 +106,8 @@ Add video URLs you want to download, one per line. You can also specify clips by
 
 **Supported formats:**
 
-- Full video:  
+- Full video:
+  
   ```
   https://youtube.com/watch?v=example
   ```
@@ -138,4 +139,6 @@ https://tiktok.com/@user/video/example
 
 ## Demo
 
-[![Video Demo](https://img.youtube.com/vi/lSFwxTx_bD4/maxresdefault.jpg)](https://youtu.be/lSFwxTx_bD4 "Videos Downloader Demo")
+
+https://github.com/user-attachments/assets/db2d463f-9e1b-4456-9323-186d8a8327ce
+
