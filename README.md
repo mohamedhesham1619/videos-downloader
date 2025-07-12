@@ -2,6 +2,17 @@
 
 A command-line tool written in Go for downloading videos and clips from various online platforms using [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [ffmpeg](https://github.com/FFmpeg/FFmpeg).
 
+## Table of Contents
+- [Features](#features)
+- [Clip Processing Modes](#clip-processing-modes)
+  - [Normal Mode (Default)](#normal-mode-default)
+  - [Fast Mode (Using `-fast` Flag)](#fast-mode-using--fast-flag)
+- [Installation](#installation)
+  - [Option 1 - Download Latest Release (Windows only)](#option-1---download-latest-release-windows-only)
+  - [Option 2 - Build from Source](#option-2---build-from-source)
+- [Usage](#usage)
+- [Demo](#demo)
+
 ## Features
 - Download full videos or clips with specified timestamps
 
@@ -13,26 +24,30 @@ A command-line tool written in Go for downloading videos and clips from various 
 
 ## Clip Processing Modes
 ### When downloading clips, there are two modes available:
-- **Normal Mode** (Default):
-  - Re-encodes the video using GPU or CPU encoding.
-  - More precise clip cutting.
-  - Slower processing due to re-encoding time.
-  - The tool automatically:
-    - Detects available GPU.
-    - Uses appropriate encoder:
-      - NVIDIA: h264_nvenc
-      - AMD: h264_amf
-      - Intel: h264_qsv
-    - Tests GPU encoder compatibility.
-    - Falls back to CPU encoder (libx264) if no GPU detected or the GPU encoder is not working
+
+### Normal Mode (Default)
+
+- **Re-encodes** the video using GPU or CPU encoding
+- **More precise** clip cutting
+- **Slower processing** due to re-encoding time
+
+The tool automatically:
+- **Detects** available GPU
+- **Uses appropriate encoder**:
+  - **NVIDIA**: `h264_nvenc`
+  - **AMD**: `h264_amf`
+  - **Intel**: `h264_qsv`
+- **Tests** GPU encoder compatibility
+- **Falls back** to CPU encoder (`libx264`) if no GPU detected or the GPU encoder is not working
 
 
-- **Fast Mode** (Using `-fast` flag):
-  - Copies the video stream directly without re-encoding.
-  - Faster processing.
-  - May not cut clips as precisely as normal mode:
-    - Clips can start a few seconds before the specified start time.
-    - Clips can have frozen frames at the beginning.
+### Fast Mode (Using `-fast` Flag)
+
+- **Copies** the video stream directly without re-encoding
+- **Faster processing**
+- **May not cut clips as precisely** as normal mode:
+  - Clips can start a few seconds before the specified start time
+  - Clips can have frozen frames at the beginning
 
 
 ## Installation
@@ -111,6 +126,7 @@ Add video URLs you want to download, one per line. You can also specify clips by
   https://youtube.com/watch?v=example
   ```
 - Clip from a video (format: `<url> <start_time>-<end_time>`, timestamps in `HH:MM:SS-HH:MM:SS`):  
+
   ```
   https://youtube.com/watch?v=example 00:01:30-00:02:45
   ```
@@ -139,3 +155,5 @@ https://tiktok.com/@user/video/example
 ## Demo
 
 [![Video Demo](https://img.youtube.com/vi/lSFwxTx_bD4/maxresdefault.jpg)](https://youtu.be/lSFwxTx_bD4 "Videos Downloader Demo")
+
+
