@@ -1,6 +1,8 @@
 # Videos Downloader
 
-A command-line tool written in Go for downloading videos and clips from various online platforms using [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [ffmpeg](https://github.com/FFmpeg/FFmpeg).
+A command-line tool written in Go for downloading full videos and clips from various online platforms using [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [ffmpeg](https://github.com/FFmpeg/FFmpeg).
+
+> **💡 Looking for a web interface for clips?** Check out the [Web Version](https://github.com/mohamedhesham1619/clipper) of this tool which includes additional features like quality selection and real-time progress updates for clip creation.
 
 ## Table of Contents
 - [Features](#features)
@@ -19,7 +21,6 @@ A command-line tool written in Go for downloading videos and clips from various 
 - Process downloads concurrently for faster performance
 
 - Supports downloading from [1000+ sites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)
-
 
 
 ## Clip Processing Modes
