@@ -99,7 +99,7 @@ func detectGpu() (string, error) {
 func selectEncoder() string {
 	gpu, err := detectGpu()
 	if err != nil || gpu == "" || !utils.TestGpuEncoder(models.GPUEncoders[gpu]) {
-		color.Cyan("Could not use GPU encoder. Falling back to CPU encoder:", models.CPUEncoder, "\n")
+		color.Cyan("Could not use GPU encoder. Falling back to CPU encoder: %s\n", models.CPUEncoder)
 		return models.CPUEncoder
 	}
 

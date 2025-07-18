@@ -32,6 +32,7 @@ A command-line tool written in Go for downloading full videos and clips from var
 - **More precise** clip cutting
 - **Slower processing** due to re-encoding time
 
+
 The tool automatically:
 - **Detects** available GPU
 - **Uses appropriate encoder**:
@@ -41,6 +42,8 @@ The tool automatically:
 - **Tests** GPU encoder compatibility
 - **Falls back** to CPU encoder (`libx264`) if no GPU detected or the GPU encoder is not working
 
+
+> **Note:** If the tool shows a message that it could not use the GPU encoder and is falling back to CPU encoding, consider updating your GPU drivers. GPU encoding (when available) is much faster than CPU encoding for re-encoding clips.
 
 ### Fast Mode (Using `-fast` Flag)
 
@@ -54,7 +57,7 @@ The tool automatically:
 ## Installation
 
 ### Option 1 - Download Latest Release (Windows only)
-1. Download the [latest release](https://drive.google.com/file/d/1hPOFOAebPspRruxmSvxdyORNsBoGDuJn/view?usp=drive_link).
+1. Download the [latest release](https://drive.google.com/file/d/1dI1I89GYf4dvj3VCJVFFKWEJ3cBQzswh/view?usp=drive_link).
    - The release contains the following files:
      - `downloader.exe`: Main executable
      - `ffmpeg.exe`: FFmpeg binary for clip processing
