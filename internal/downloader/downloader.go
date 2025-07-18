@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"videos-downloader/internal/config"
 	"videos-downloader/internal/models"
 	"videos-downloader/internal/utils"
+
 	"github.com/fatih/color"
 )
 
@@ -77,91 +77,27 @@ func (d *Downloader) buildFullDownloadCommand(req models.VideoRequest) *exec.Cmd
 // prepare the command to download a clip of the video
 func (d *Downloader) buildClipDownloadCommand(req models.VideoRequest) (*exec.Cmd, error) {
 
-	// Get both the direct URL and the title with the extension
-	cmd := exec.Command(
-		utils.GetCommand("yt-dlp"),
-		"-f", "bv*+ba/b/best",
-		"--print", "%(title).244s\n%(urls)s",
-		"--encoding", "utf-8",
-		"--no-playlist",
-		"--no-warnings",
-		req.Url)
+	// Prepare the download path with the video title
+	// yt-dlp output template: "%(title).244s.%(ext)s"
+	// - %(title)s: video title from metadata
+	// - .244s: limits title to 244 characters to avoid path length issues on Windows
+	// - %(ext)s: file extension based on selected format
+	downloadPath := filepath.Join(d.Config.DownloadPath, "%(title).244s.%(ext)s")
 
-	// Run the command and get the output
-	output, err := cmd.CombinedOutput()
-
-	if err != nil {
-		return nil, fmt.Errorf("error getting (%v) info: %v\noutput:%v", req.Url, err, string(output))
+	// Prepare the command arguments
+	args := []string{
+		"-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+		"--merge-output-format", "mp4",
+		"--download-sections", fmt.Sprintf("*%s", req.ClipTimeRange),
+		"-o", downloadPath,
+		req.Url,
 	}
 
-	// Split output into lines
-	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-
-	if len(lines) < 2 {
-		return nil, fmt.Errorf("expected both URL and title but got:%v", lines)
+	// If not in fast mode, add --postprocessor-args to force re-encoding with the selected encoder
+	if !d.Config.IsFastMode {
+		args = append(args, "--postprocessor-args", fmt.Sprintf("all=-c:v %s", d.Config.Encoder))
 	}
 
-	videoTitle := utils.SanitizeFilename(lines[0]) + ".mp4"
-	downloadPath := filepath.Join(d.Config.DownloadPath, videoTitle)
-
-	clipStart, clipDuration, err := utils.ParseClipDuration(req.ClipTimeRange)
-
-	if err != nil {
-		return nil, fmt.Errorf("error parsing clip duration: %v", err)
-	}
-
-	var ffmpegCmd *exec.Cmd
-
-	// Multiple URLs (separate video and audio)
-	if len(lines) > 2 {
-		videoUrl := lines[1]
-		audioUrl := lines[2]
-
-		ffmpegCmd = exec.Command(
-			utils.GetCommand("ffmpeg"),
-			"-ss", clipStart, // Seek position for video
-			"-i", videoUrl,
-			"-ss", clipStart, // Seek position for audio
-			"-i", audioUrl,
-			"-t", clipDuration,
-		)
-
-		// If fast mode is enabled, copy the streams without re-encoding
-		// Otherwise, use the encoder
-		if d.Config.IsFastMode {
-			ffmpegCmd.Args = append(ffmpegCmd.Args,
-				"-c", "copy",
-				downloadPath)
-		} else {
-			ffmpegCmd.Args = append(ffmpegCmd.Args,
-				"-c:v", d.Config.Encoder,
-				"-q:a", "0", // Highest audio quality
-				downloadPath)
-		}
-	} else { // Single URL (combined format)
-
-		url := lines[1]
-
-		ffmpegCmd = exec.Command(
-			utils.GetCommand("ffmpeg"),
-			"-ss", clipStart, // Seek position
-			"-i", url,
-			"-t", clipDuration,
-		)
-		if d.Config.IsFastMode {
-
-			ffmpegCmd.Args = append(ffmpegCmd.Args,
-				"-c", "copy", // Copy the stream without re-encoding
-				downloadPath,
-			)
-		} else {
-			ffmpegCmd.Args = append(ffmpegCmd.Args,
-				"-c:v", d.Config.Encoder,
-				"-q:a", "0", // Highest audio quality
-				downloadPath,
-			)
-		}
-	}
-
-	return ffmpegCmd, nil
+	cmd := exec.Command(utils.GetCommand("yt-dlp"), args...)
+	return cmd, nil
 }

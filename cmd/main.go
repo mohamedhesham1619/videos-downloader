@@ -33,7 +33,17 @@ func main() {
 			err := downloader.Download(videoRequest)
 
 			if err != nil {
-				fmt.Printf("%s (%s): %s\n\n", color.RedString("Error downloading video"), url, color.RedString(err.Error()))
+				// if the download fails and fast mode is not enabled, try to download the video without re-encoding
+				if !cfg.IsFastMode {
+					fmt.Printf("%s failed to download video(%s)\n Trying again without re-encoding\n", color.RedString("Error:"), url)
+					cfg.IsFastMode = true
+					err = downloader.Download(videoRequest)
+					if err != nil {
+						fmt.Printf("%s %v\n", color.RedString("Failed to download video even in fast mode:"), err)
+					} else {
+						fmt.Printf("%s Downloaded successfully in fast mode.\n", color.GreenString("Success:"))
+					}
+				}
 			}
 			wg.Done()
 		}()
